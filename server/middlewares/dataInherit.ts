@@ -1,7 +1,33 @@
-export default async (ctx, next) => {
+import { Schema } from "@strapi/strapi";
+import { Context, Next } from "koa";
+
+declare module "@strapi/strapi" {
+  interface Attribute {
+    relation?: string;
+    target?: string;
+  }
+}
+
+declare module "koa" {
+  interface Context {
+    body: {
+      data?: Data;
+    };
+  }
+}
+
+interface Data {
+  id: number;
+  attributes: {
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+export default async (ctx: Context, next: Next) => {
   await next();
 
-  if (!ctx.body.data) {
+  if (!ctx.body?.data) {
     return;
   }
 
@@ -46,7 +72,7 @@ function getCollectionUID(collectionName: string): string | undefined {
 
 function getRelations(collectionUID: string): string[] {
   let relations: string[] = [];
-  const schema = strapi.contentTypes[collectionUID].__schema__;
+  const schema: Schema = strapi.contentTypes[collectionUID].__schema__;
 
   for (const item in schema.attributes) {
     if (
@@ -59,7 +85,7 @@ function getRelations(collectionUID: string): string[] {
   return relations;
 }
 
-function getNulls(data): string[] {
+function getNulls(data: Data): string[] {
   let nullsArray: string[] = [];
   for (const item in data.attributes) {
     if (data.attributes[item] === null) {
@@ -70,12 +96,12 @@ function getNulls(data): string[] {
 }
 
 async function combineWithRelation(
-  data,
-  dataToCheck,
+  data: Data,
+  dataToCheck: Data,
   nullsArray: string[],
   relations: string[],
   checked: number[],
-  collectionUID
+  collectionUID: string
 ) {
   const entry = await strapi.entityService.findOne(
     collectionUID,
