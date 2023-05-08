@@ -1,4 +1,5 @@
 import { Schema } from "@strapi/strapi";
+import { Entity } from "@strapi/strapi/lib/core-api/service";
 import { Context, Next } from "koa";
 
 declare module "@strapi/strapi" {
@@ -31,7 +32,7 @@ export default async (ctx: Context, next: Next) => {
     return;
   }
 
-  const collectionName: string = ctx?.request?.url?.split("/")[2];
+  const collectionName = ctx?.request?.url?.split("/")[2];
 
   const collectionUID = getCollectionUID(collectionName);
 
@@ -39,105 +40,131 @@ export default async (ctx: Context, next: Next) => {
     return;
   }
 
-  const relations: string[] = getRelations(collectionUID);
+  const relationsNames = getRelationsNames(collectionUID);
 
-  if (!relations || relations.length < 1) {
+  if (relationsNames.length == 0) {
     return;
   }
 
-  const nullsArray: string[] = getNulls(ctx.body.data);
+  const nullsNames = getNullsNames(ctx.body.data);
 
-  if (nullsArray.length < 1) {
+  if (nullsNames.length == 0) {
     return;
   }
 
-  let checked: number[] = [ctx.body.data.id];
+  let idsChecked: number[] = [ctx.body.data.id];
   ctx.body.data = await combineWithRelation(
     ctx.body.data,
     ctx.body.data,
-    nullsArray,
-    relations,
-    checked,
+    nullsNames,
+    relationsNames,
+    idsChecked,
     collectionUID
   );
 };
 
 function getCollectionUID(collectionName: string): string | undefined {
   for (const key in strapi.contentTypes) {
-    if (strapi.contentTypes[key].collectionName === collectionName) {
-      return strapi.contentTypes[key].uid;
+    const contentType = strapi.contentTypes[key];
+    if (contentType.collectionName === collectionName) {
+      return contentType.uid;
     }
   }
 }
 
-function getRelations(collectionUID: string): string[] {
-  let relations: string[] = [];
+function getRelationsNames(collectionUID: string): string[] {
+  let relationsNames: string[] = [];
   const schema: Schema = strapi.contentTypes[collectionUID].__schema__;
 
   for (const item in schema.attributes) {
+    const itemAttributes = schema.attributes[item];
     if (
-      schema.attributes[item].type === "relation" &&
-      schema.attributes[item].target === collectionUID
+      itemAttributes.type === "relation" &&
+      itemAttributes.target === collectionUID
     ) {
-      relations.push(item);
+      relationsNames.push(item);
     }
   }
-  return relations;
+  return relationsNames;
 }
 
-function getNulls(data: Data): string[] {
-  let nullsArray: string[] = [];
+function getNullsNames(data: Data): string[] {
+  let nullsNames: string[] = [];
   for (const item in data.attributes) {
     if (data.attributes[item] === null) {
-      nullsArray.push(item);
+      nullsNames.push(item);
     }
   }
-  return nullsArray;
+  return nullsNames;
 }
 
 async function combineWithRelation(
-  data: Data,
-  dataToCheck: Data,
-  nullsArray: string[],
-  relations: string[],
-  checked: number[],
+  dataToUpdate: Data,
+  dataToCheck: { id: number; [key: string]: any },
+  nullsNames: string[],
+  relationsNames: string[],
+  idsChecked: number[],
   collectionUID: string
 ) {
-  const entry = await strapi.entityService.findOne(
+  const entry = await getRelationData(
     collectionUID,
     dataToCheck.id,
-    {
-      fields: [],
-      populate: relations.reduce((acc, relation) => {
-        acc[relation] = { fields: nullsArray };
-        return acc;
-      }, {}),
-    }
+    relationsNames,
+    nullsNames
   );
 
-  for (const relation of relations) {
-    if (entry[relation] && !checked.includes(entry[relation].id)) {
-      for (const item of nullsArray) {
-        if (entry[relation][item]) {
-          data.attributes[item] = entry[relation][item];
-          nullsArray.splice(nullsArray.indexOf(item), 1);
-        }
-      }
-      checked.push(entry[relation].id);
+  for (const relation of relationsNames) {
+    const relationData: { id: number; [key: string]: any } = entry[relation];
+    if (relationData && !idsChecked.includes(relationData.id)) {
+      dataToUpdate = compareFieldsAndUpdate(
+        nullsNames,
+        relationData,
+        dataToUpdate
+      );
+      idsChecked.push(relationData.id);
 
-      if (nullsArray.length == 0) {
-        return data;
+      if (nullsNames.length == 0) {
+        return dataToUpdate;
       }
 
       return combineWithRelation(
-        data,
-        entry[relation],
-        nullsArray,
-        relations,
-        checked,
+        dataToUpdate,
+        relationData,
+        nullsNames,
+        relationsNames,
+        idsChecked,
         collectionUID
       );
     }
   }
-  return data;
+  return dataToUpdate;
+}
+
+async function getRelationData(
+  collectionUID: string,
+  idToCheck: number,
+  relationsNames: string[],
+  nullsNames: string[]
+): Promise<Entity> {
+  return await strapi.entityService.findOne(collectionUID, idToCheck, {
+    fields: [],
+    populate: relationsNames.reduce((acc, relation) => {
+      acc[relation] = { fields: nullsNames };
+      return acc;
+    }, {}),
+  });
+}
+
+function compareFieldsAndUpdate(
+  nullsNames: string[],
+  relationData: { id: number; [key: string]: any },
+  dataToUpdate: Data
+): Data {
+  for (const item of nullsNames) {
+    if (relationData[item]) {
+      dataToUpdate.attributes[item] = relationData[item];
+      nullsNames.splice(nullsNames.indexOf(item), 1);
+    }
+  }
+  return dataToUpdate;
 }
