@@ -160,11 +160,13 @@ function compareFieldsAndUpdate(
   relationData: { id: number; [key: string]: any },
   dataToUpdate: Data
 ): Data {
+  let tempArrayCopy = [...nullsNames];
   for (const item of nullsNames) {
-    if (relationData[item]) {
+    if (relationData[item] !== null) {
       dataToUpdate.attributes[item] = relationData[item];
-      nullsNames.splice(nullsNames.indexOf(item), 1);
+      tempArrayCopy.splice(tempArrayCopy.indexOf(item), 1);
     }
   }
+  nullsNames = tempArrayCopy;
   return dataToUpdate;
 }
