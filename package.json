@@ -1,11 +1,15 @@
 {
-  "name": "data-inheritance",
-  "version": "0.0.0",
-  "description": "This is the description of the plugin.",
+  "name": "strapi-data-inheritance",
+  "version": "0.0.1",
+  "description": "A Strapi plugin to inhert data from relative entities of the same content type.",
   "strapi": {
     "name": "data-inheritance",
-    "description": "Description of data-inheritance plugin",
+    "description": "A Strapi plugin to inhert data from relative entities of the same content type",
     "kind": "plugin"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OmriS1996/data-inheritance"
   },
   "dependencies": {
     "@strapi/design-system": "^1.6.3",
@@ -37,11 +41,15 @@
     "styled-components": "^5.3.6"
   },
   "author": {
-    "name": "A Strapi developer"
+    "name": "Omri Shohat",
+    "email": "shohatomri@gmail.com",
+    "url": "https://github.com/OmriS1996"
   },
   "maintainers": [
     {
-      "name": "A Strapi developer"
+      "name": "Omri Shohat",
+      "email": "shohatomri@gmail.com",
+      "url": "https://github.com/OmriS1996"
     }
   ],
   "engines": {
