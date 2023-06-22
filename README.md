@@ -4,6 +4,8 @@ For inheriting data from related entities of the same content type.
 
 ## Case
 
+![Screenshot 2023-06-22 at 10 24 22](https://github.com/OmriS1996/data-inheritance/assets/84664543/19555175-4fd3-4554-8690-cf044afe222c)
+
 When you want to have a "father and son" relationship between different items of the same content type.
 You can create a main father, which contains all of the information you need, and have a son, related to him, when leaving certain fields of the son empty, it will take the information from the same fields from father, as long as they aren't null there too.
 In that case, every time you'll updated information that is relevant to all of the children, they will all recieve it automatically, removing the need of manually changing everything, while also giving the ability to have certain fields having different information from that of the father.
